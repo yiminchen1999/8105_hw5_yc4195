@@ -1,10 +1,13 @@
 ---
 title: "p8105_hw5_yc4195.Rmd"
 output: github_document
+author: "Yimin Chen"
+date: "November 08, 2022"
 ---
 
 ```{r settingup, echo=FALSE}
 library(tidyverse)
+library(patchwork)
 library(dplyr)
 library(readxl)
 library(ggplot2)
@@ -25,9 +28,6 @@ scale_fill_discrete = scale_fill_viridis_d
 
 ## Problem 1
 
-```{r }
-
-```
 
 ## Problem 2
 
@@ -50,7 +50,7 @@ unsolved =
             total_number = n()) 
 unsolved
 ```
-The data set consists of `r nrow(homicide_df)` cases, and `r ncol(homicide_df)`  variables that include the time, location, and type of killing, whether an arrest was made, and basic demographic information about each victim.
+The data set consists of `r nrow(homicide_df)` cases, and `r ncol(homicide_df)`  variables that include the time, place, and nature of the murder, whether an arrest was made, and basic demographic information about each victim.
 
 ```{r}
  Baltimore_df =
@@ -88,15 +88,107 @@ plot_df
 
 ```{r sim}
 set.seed(5000)
-t_test = function(samp_size, miu = 0, sigma = 5){
-  sim_data = 
-    tibble(
-      x = rnorm(n = samp_size, mean = miu, sd = sigma)
-    )
+estimate_test = function(n=30, mu, sigma = 5) {
   
-  sim_data %>%
-  t.test(mu = 0, conf.level = 0.95) %>%
-  broom::tidy() %>% 
-  select(estimate, p.value)
+  sim_data = tibble(
+    x = rnorm(n=n, mean = mu, sd = sigma)
+  )
+  
+  sim_data %>% 
+        summarize(t_test =t.test(x,mu = 0, conf.level = 0.95) %>%
+        broom::tidy() %>% 
+        select(estimate, p.value))
 }
+
+
+sim_test =
+  rerun(5000, estimate_test(mu = 0)) %>% 
+  bind_rows()%>% 
+  mutate(
+    mu_hat = pull(t_test,estimate),
+    p_value = pull(t_test,p.value)) %>% 
+  select(-t_test)
+
+sim_test
+
+sim_test1 =
+  tibble(
+    mu = c(0,1,2,3,4,5,6)
+  ) %>% 
+  mutate(
+    output_lists = map(.x = mu, ~rerun(5000, estimate_test(n=30,mu = .x))),
+    estimate_dfs = map(output_lists, bind_rows)) %>% 
+  select(-output_lists) %>% 
+  unnest(estimate_dfs)%>%
+  mutate(
+    mu_hat = pull(t_test,estimate),
+    p_value = pull(t_test,p.value))%>% 
+  select(mu, mu_hat, p_value)
+
+sim_test1
 ```
+
+
+```{r }
+proportionplot =
+  sim_test1 %>% 
+  group_by(mu) %>% 
+  summarize(total_number = n(),rejected_number = sum(p_value < 0.05)) %>% 
+  mutate(proportion = rejected_number / total_number) %>% 
+  ggplot(aes(x = mu, y = proportion,color=mu)) +
+  geom_point() +
+  geom_line()+
+  labs(
+    title = "Association between effect size and power",
+    x = "mu Value",
+    y = "Proportion of times the null was rejected "
+  ) + 
+  theme(plot.title = element_text(hjust = 0.5))
+proportionplot
+```
+
+
+The proportion of times the null is rejected increases as mu increases. Therefore, as the size of the effect increases, its power also increases.
+
+```{r }
+plot1 =
+  sim_test1%>% 
+  group_by(mu) %>%
+  summarize(avg_muhat = mean(mu_hat)
+  ) %>% 
+  ggplot(aes(x = mu, y = avg_muhat,color=mu)) + 
+  geom_point() +
+  geom_line() +
+  labs(
+    x = "True mu Value",
+    y = "Average estimate of mu",
+    title = "Total datasets"
+  ) + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+plot2 =
+  sim_test1%>% 
+  filter(p_value < 0.05) %>% 
+  group_by(mu) %>%
+  summarize(
+    avg_muhat = mean(mu_hat)
+  ) %>% 
+  ggplot(aes(x = mu, y = avg_muhat,color=mu)) + 
+  geom_point() +
+  geom_line() +
+  labs(
+    x = "True mu Value",
+    y = "Average estimate of mu",
+    title = "Total rejected datasets"
+  ) + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r patchwork}
+plot1 + plot2
+```
+
+
+In the combined plot, we can see when the effect size/true value of mu is small (from 0 to 3), he sample average of mu hat across tests for which the null is rejected was not equal to the true value of mu.However, the average estimate of mu approximates the true mu value when the effect size is between 4 and 6. That is to say, since as the size of the effect increases, its power also increases, and the average estimate of mu gradually approximates or equal to the true mu value. 
+

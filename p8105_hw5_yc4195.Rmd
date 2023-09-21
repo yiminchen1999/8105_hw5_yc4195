@@ -230,5 +230,5 @@ plot1 + plot2
 ```
 
 
-In the combined plot, we can see when the effect size/true value of mu is small (from 0 to 3), he sample average of mu hat across tests for which the null is rejected was not equal to the true value of mu.However, the average estimate of mu approximates the true mu value when the effect size is between 4 and 6. That is to say, since as the size of the effect increases, its power also increases, and the average estimate of mu gradually approximates or equal to the true mu value. 
+In the combined plot, we can see when the effect size/true value of mu is small (from 0 to 3), he sample average of mu hat across tests for which the null is rejected was not equal to the true value of mu.However, the average estimate of mu approximates the true mu value when the effect size is between 4 and 6. That is to say, since as the size of the effect increases, its power also increases, and the average estimate of mu gradually approximates or equal to the true mu value..
 
